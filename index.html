@@ -209,6 +209,7 @@ nav button.on{color:var(--blue);border-top-color:var(--blue)}
   <label for="xCat">Category</label><select id="xCat"></select>
   <label for="xDesc">Description</label><input type="text" id="xDesc" placeholder="For example: Taxi to the airport">
   <label for="xSupp">Supplier or other info (optional)</label><input type="text" id="xSupp">
+  <label for="xPo">PO No. (optional, for example PO-10214)</label><input type="text" id="xPo" placeholder="PO-10214">
   <div class="two"><div><label for="xPcs">Pieces</label><input type="number" id="xPcs" value="1" step="any" inputmode="decimal"></div><div><label for="xPrice">Unit price</label><input type="number" id="xPrice" step="any" inputmode="decimal"></div></div>
   <label for="xCur">Currency</label><select id="xCur"></select>
   <label for="xRec">Receipt (photo, the file name is saved)</label><input type="file" id="xRec" accept="image/*" capture="environment">
@@ -390,9 +391,9 @@ $("btnAddExp").addEventListener("click", function(){
   var d = $("xDate").value, p = $("xProj").value, desc = $("xDesc").value.trim(), price = parseFloat($("xPrice").value);
   if (!d || !p || !desc || isNaN(price)) { alert("Date, project, description and unit price are needed."); return; }
   var f = $("xRec").files && $("xRec").files[0], pr = projOf(p) || {};
-  S.expenses.push({id: uid(), date: d, project: p, cat: $("xCat").value, desc: desc, supp: $("xSupp").value.trim(), pcs: parseFloat($("xPcs").value) || 1,
+  S.expenses.push({id: uid(), date: d, project: p, cat: $("xCat").value, desc: desc, supp: $("xSupp").value.trim(), po: $("xPo").value.trim(), pcs: parseFloat($("xPcs").value) || 1,
     price: price, cur: $("xCur").value, receipt: f ? f.name : "", quote: pr.quotation || "", sent: false});
-  save(); $("xDesc").value = ""; $("xSupp").value = ""; $("xPrice").value = ""; $("xPcs").value = "1"; $("xRec").value = ""; closeAll(); renderLists();
+  save(); $("xDesc").value = ""; $("xSupp").value = ""; $("xPo").value = ""; $("xPrice").value = ""; $("xPcs").value = "1"; $("xRec").value = ""; closeAll(); renderLists();
 });
 
 function weekStart(d){ var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()), wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return dstr(x); }
@@ -434,7 +435,7 @@ function renderDay(){
     return '<div class="item"><div><b>' + esc(e.from) + " to " + esc(e.to) + '</b><span class="pill' + (e.sent ? ' sent">sent' : '">not sent') + '</span><div class="s">' + esc(e.project) + " | " + hours(e.from, e.to, e.brk).toFixed(2) + " h" + (e.brk ? " (break " + e.brk + ")" : "") + (e.desc ? "<br>" + esc(e.desc) : "") + '</div></div><button class="small" data-del="e:' + e.id + '">Delete</button></div>';
   }).join("") : '<div class="empty">No hours this day.</div>';
   if (xs.length) html += '<div class="eyebrow" style="margin-top:14px">Expenses</div>' + xs.map(function(e){
-    return '<div class="item"><div><b>' + esc(e.desc) + '</b><span class="pill' + (e.sent ? ' sent">sent' : '">not sent') + '</span><div class="s">' + esc(e.project) + " | " + esc(e.cat) + " | " + e.pcs + " x " + e.price + " " + esc(e.cur) + '</div></div><button class="small" data-del="x:' + e.id + '">Delete</button></div>';
+    return '<div class="item"><div><b>' + esc(e.desc) + '</b><span class="pill' + (e.sent ? ' sent">sent' : '">not sent') + '</span><div class="s">' + esc(e.project) + " | " + esc(e.cat) + (e.po ? " | " + esc(e.po) : "") + " | " + e.pcs + " x " + e.price + " " + esc(e.cur) + '</div></div><button class="small" data-del="x:' + e.id + '">Delete</button></div>';
   }).join("");
   html += '<div class="row2"><button class="btn" id="dayAddH">+ Hours</button><button class="btn sec" id="dayAddX">+ Expense</button></div>';
   $("dayCard").innerHTML = html;
@@ -457,7 +458,7 @@ function bindDelete(){
 function renderLists(){
   var xs = S.expenses.slice().sort(function(a, b){ return b.date.localeCompare(a.date); });
   $("expList").innerHTML = xs.length ? '<div class="card">' + xs.slice(0, 60).map(function(e){
-    return '<div class="item"><div><b>' + esc(e.desc) + '</b><span class="pill' + (e.sent ? ' sent">sent' : '">not sent') + '</span><div class="s">' + esc(e.date) + " | " + esc(e.project) + " | " + esc(e.cat) + "<br>" + e.pcs + " x " + e.price + " " + esc(e.cur) + (e.receipt ? " | " + esc(e.receipt) : "") + '</div></div><button class="small" data-del="x:' + e.id + '">Delete</button></div>';
+    return '<div class="item"><div><b>' + esc(e.desc) + '</b><span class="pill' + (e.sent ? ' sent">sent' : '">not sent') + '</span><div class="s">' + esc(e.date) + " | " + esc(e.project) + " | " + esc(e.cat) + (e.po ? " | " + esc(e.po) : "") + "<br>" + e.pcs + " x " + e.price + " " + esc(e.cur) + (e.receipt ? " | " + esc(e.receipt) : "") + '</div></div><button class="small" data-del="x:' + e.id + '">Delete</button></div>';
   }).join("") + "</div>" : '<div class="card"><div class="empty">No expenses yet. Use the + button.</div></div>';
   bindDelete();
   renderCal(); summary();
@@ -520,9 +521,9 @@ function pending(){ return {e: S.entries.filter(function(x){ return !x.sent; }),
 function sendInfo(){ var p = pending(); $("sendInfo").textContent = p.e.length + " day(s) and " + p.x.length + " expense(s) are not sent yet."; }
 function buildCsv(p){
   var L = [["#ME-Tech phone export", "v2", new Date().toISOString(), S.settings.engineer].map(csvq).join(";")];
-  L.push("kind;id;date;project;engineer;from;to;break_h;description;category;supplier;pieces;unit_price;currency;receipt;quotation");
-  p.e.forEach(function(e){ L.push(["T", e.id, e.date, e.project, S.settings.engineer, e.from, e.to, e.brk, e.desc, "", "", "", "", "", "", ""].map(csvq).join(";")); });
-  p.x.forEach(function(e){ L.push(["X", e.id, e.date, e.project, S.settings.engineer, "", "", "", e.desc, e.cat, e.supp, e.pcs, e.price, e.cur, e.receipt, e.quote || ""].map(csvq).join(";")); });
+  L.push("kind;id;date;project;engineer;from;to;break_h;description;category;supplier;pieces;unit_price;currency;receipt;quotation;po");
+  p.e.forEach(function(e){ L.push(["T", e.id, e.date, e.project, S.settings.engineer, e.from, e.to, e.brk, e.desc, "", "", "", "", "", "", "", ""].map(csvq).join(";")); });
+  p.x.forEach(function(e){ L.push(["X", e.id, e.date, e.project, S.settings.engineer, "", "", "", e.desc, e.cat, e.supp, e.pcs, e.price, e.cur, e.receipt, e.quote || "", e.po || ""].map(csvq).join(";")); });
   return L.join("\r\n") + "\r\n";
 }
 var lastBlob = null, lastName = "";
